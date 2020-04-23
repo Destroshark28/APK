@@ -1,0 +1,159 @@
+#include <stdio.h>
+#include <dos.h>
+
+#define COUNT 39
+
+void playSound();
+void printStateWords();
+void divRatio();
+void rand();
+
+int main()
+{
+	printf("Start values:\n");
+	printStateWords();
+	divRatio();
+
+	char choice;
+	unsigned int limit = 65536 - 1, number;
+
+	while(1) {
+		printf("\n\n1. Play sound.\n2. Print state words.\n3. Division ratio.\n4 Randomizer.\n0. Exit\n");
+		fflush(stdin);
+		printf("\nYour choise: ");
+		scanf("%c", &choice);
+
+		switch (choice) {
+		case '1':
+			playSound();
+			outp(0x43, 0xB4);//регистр управления
+			outp(0x42, limit % 256);//выход на динамик . старший 
+			outp(0x42, limit / 256);//выход на динамик . младший 
+			outp(0x61, inp(0x61) | 1);// записываем в пор тем самым включая таймер и динимик в нашем случае таймер
+			break;
+		case '2':
+			printStateWords();
+			outp(0x43, 0xB4);
+			outp(0x42, limit % 256);
+			outp(0x42, limit / 256);
+			outp(0x61, inp(0x61) | 1); // включить работу канала
+			break;
+		case '3':
+			divRatio();
+			outp(0x43, 0xB4);
+			outp(0x42, limit % 256);
+			outp(0x42, limit / 256);
+			outp(0x61, inp(0x61) | 1);
+			break;
+		case '4':
+			rand();
+			outp(0x43, 0xB4);
+			outp(0x42, limit % 256);
+			outp(0x42, limit / 256);
+			outp(0x61, inp(0x61) | 1);
+			break;
+		case '0':
+			return 0;
+		}
+	}
+}
+
+
+void printStateWords() {
+	unsigned char controlBytes[3] = { 0xE2, 0xE4, 0xE8 }; // 11-10-001-0, 11-10-010-0, 11-10-100-0
+
+	unsigned char state;
+	unsigned char ports[3] = { 0x40, 0x41, 0x42 };
+
+	for (int i = 0; i < 3; ++i)
+	{
+		outp(0x43, controlBytes[i]); //написать команду для считывания слова состояния канала в регистр управления
+
+		state = inp(ports[i]);
+
+		printf("Channel %d: ", i);
+		for (int j = 7; j >= 0; --j)
+		{
+			printf("%d", (state >> j) & 1);
+		}
+		printf("\n");
+	}
+}
+
+void divRatio()
+{
+	int ports[3] = { 0x40, 0x41, 0x42 };
+	int controlBytes[3] = { 0, 64, 128 };	// 00-00-000-0, 01-00-000-0, 10-000-00-0
+	// фиксация текущего значения счетчика для чтения
+
+	unsigned int iValue, iHigh, iLow, temp;
+
+	printf("Division ratio:\n");
+
+	for (int i = 0; i < 3; ++i)
+	{
+		if (i == 2)
+		{
+			outp(0x61, inp(0x61) | 1);
+		}
+		iValue = 0;
+		for (int j = 0; j < 30000; j++)
+		{
+			outp(0x43, controlBytes[i]);
+			iLow = inp(ports[i]);
+			iHigh = inp(ports[i]);
+			temp = iHigh * 256 + iLow;
+			if (temp > iValue) iValue = temp;
+		}
+
+		if (i == 2)
+		{
+			outp(0x61, inp(0x61) & 0xFE);
+		}
+		printf("Channel %d: %X\n", i, iValue);
+	}
+}
+
+void playSound() {
+
+        int  frequency[9] = { 659, 622, 659, 622, 659, 493, 622, 523, 440 };
+        int  durability[9] = { 200, 200, 200, 200, 200, 200, 200, 200, 200 };
+
+
+	long unsigned base = 1193180;
+	int kd;
+	outp(0x43, 0xB6);				// записывает значение в порт (перейдите на третий (2) канал таймера для доступа к динамику)
+	for (int i = 0; i < 9; i++) {
+		kd = base / frequency[i];	// рассчитать задержку
+		
+                //загрузить регистр счетчика таймера
+
+		outp(0x42, kd);				// загружать старшие байты
+		kd /= 256;
+		outp(0x42, kd);				// загрузить младшие байты
+		
+                //включить громкоговоритель
+		outp(0x61, inp(0x61) | 3);	// сигнал с третьего канала таймера поступает на вход динамика
+		delay(durability[i]);		// задержка
+	}
+	outp(0x61, inp(0x61) & 0xFC); // выключить динамик
+}
+
+void rand() {
+	unsigned int number;
+	for (;;) {
+		printf("Enter your border number: ");
+		scanf("%d", &number);
+		if (number == 0) break;
+		outp(0x43, 0xB6);					// записывает значение в порт (перейдите на третий (2) канал таймера для доступа к динамику)
+		outp(0x42, number);					// загружать старшие байты
+		number /= 256;
+		outp(0x42, number);					// загрузить младшие байты
+		outp(0x61, inp(0x61) | 1);			// включить канал
+		int result;
+		outp(0x43, 0x86);					// принять текущее значение регистра во втором канале таймера
+		result = inp(0x42);					// загружать старшие байты
+		result = (inp(0x42) << 8) + result; // загрузка младших байтов 10110100
+		printf("Result: %d\n", result);
+	}
+}
