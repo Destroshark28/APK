@@ -139,21 +139,47 @@ void playSound() {
 	outp(0x61, inp(0x61) & 0xFC); // выключить динамик
 }
 
-void rand() {
-	unsigned int number;
-	for (;;) {
-		printf("Enter your border number: ");
-		scanf("%d", &number);
-		if (number == 0) break;
-		outp(0x43, 0xB6);					// записывает значение в порт (перейдите на третий (2) канал таймера для доступа к динамику)
-		outp(0x42, number);					// загружать старшие байты
-		number /= 256;
-		outp(0x42, number);					// загрузить младшие байты
-		outp(0x61, inp(0x61) | 1);			// включить канал
-		int result;
-		outp(0x43, 0x86);					// принять текущее значение регистра во втором канале таймера
-		result = inp(0x42);					// загружать старшие байты
-		result = (inp(0x42) << 8) + result; // загрузка младших байтов 10110100
-		printf("Result: %d\n", result);
-	}
+void RandomNumber()
+{
+	char choice;
+	unsigned int limit = TIME_RUN - 1, numberLow, numberHigh, number;
+
+	do
+	{
+		printf("\n\n1. Set a limit.\n2. Get a number.\n0. Exit\n");
+		fflush(stdin);
+		printf("\nYour choise: ");
+		scanf("%s", &choice);
+
+		switch (choice)
+		{
+		case '1':
+		{
+			do
+			{
+				printf("\nEnter a limit in range [1...65635].\n");
+				fflush(stdin);
+			} while (!scanf("%d", &limit) || limit < 1);
+
+			outp(0x43, 0xB4);
+			outp(0x42, limit % 256);
+			limit /= 256;
+			outp(0x42, limit);
+			outp(0x61, inp(0x61) | 1);		
+			break;
+		}
+		case '2':
+		{
+			outp(0x43, 128);
+			numberLow = inp(0x42);
+			numberHigh = inp(0x42);
+			number = numberHigh * 256 + numberLow;
+
+			printf("\nRandom number: %u\n", number);
+
+			break;
+		}
+		}
+	} while (choice != '0');
+	outp(0x61, inp(0x61) & 0xFC);
 }
