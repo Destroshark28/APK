@@ -116,8 +116,8 @@ void divRatio()
 
 void playSound() {
 
-        int  frequency[9] = { 392, 392, 293, 196, 196, 392, 392, 293, 196 };
-        int  durability[9] = { 800, 400, 400, 400, 400, 400, 400, 400, 400 };
+        int  frequency[9] = { 659, 622, 659, 622, 659, 493, 622, 523, 440 };
+        int  durability[9] = { 200, 200, 200, 200, 200, 200, 200, 200, 200 };
 
 
 	long unsigned base = 1193180;
