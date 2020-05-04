@@ -38,140 +38,6 @@ void wait(void)
         } while (inp(0x71) & 0x80);             //ожидаем пока часы станут доступными
 }
 
-void getTime(void)
-{
-        int value;
-        wait();							//ожидаем часы
-        outp(0x70, 0x04);					//устанавливаем значение порта
-        value = inp(0x71);					//получаем значение часов
-        printf("%d:", BCDToInteger(value));                     //переводим двоично-десятичный вид в в представление int
-
-        wait();
-        outp(0x70, 0x02);
-        value = inp(0x71);					//получаем значение минут
-        printf("%d:", BCDToInteger(value));
-
-        wait();
-        outp(0x70, 0x00);
-        value = inp(0x71);					//получаем значение секунды
-        printf("%d   ", BCDToInteger(value));
-
-        wait();
-        outp(0x70, 0x07);
-        value = inp(0x71);					//получаем значение даты
-        printf("%d.", BCDToInteger(value));
-
-        wait();
-        outp(0x70, 0x08);
-        value = inp(0x71);					//получаем значение месяца
-        printf("%d.", BCDToInteger(value));
-
-        wait();
-        outp(0x70, 0x09);
-        value = inp(0x71);                                       //получаем значение года
-        printf("%d   ", BCDToInteger(value));
-
-        wait();
-        outp(0x70, 0x06);
-        value = inp(0x71);					//получаем значение дня недели
-        switch (BCDToInteger(value))
-        {
-        case 1: printf("Sunday\n"); break;
-        case 2: printf("Monday\n"); break;
-        case 3: printf("Tuesday\n"); break;
-        case 4: printf("Wednesday\n"); break;
-        case 5: printf("Thursday\n"); break;
-        case 6: printf("Friday\n"); break;
-        case 7: printf("Saturday\n"); break;
-        default: printf("Day of week is not set\n"); break;
-        }
-}
-
-void setTime(void)
-{
-        int value;
-        freeze();
-        //получение данных
-        do
-        {
-                printf("Enter hour: ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 23 || value < 0)
-                        printf("Error incorrect value!\n");
-        } while (value > 23 || value < 0);
-        outp(0x70, 0x04);
-        outp(0x71, IntToBCD(value));				//установка значений часов
-
-        do
-        {
-                printf("Enter minute: ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 59 || value < 0)
-                        printf("Error incorrect value!\n");
-        } while (value > 59 || value < 0);
-        outp(0x70, 0x02);
-        outp(0x71, IntToBCD(value));				//установка значений минут
-
-        do
-        {
-                printf("Enter second: ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 59 || value < 0)
-                        printf("Error incorrect value!\n");
-        } while (value > 59 || value < 0);
-        outp(0x70, 0x00);
-        outp(0x71, IntToBCD(value));				//установка значений секунд
-
-        do
-        {
-                printf("Enter week day number(1...7): ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 7 || value < 1)
-                        printf("Error incorrect value!\n");
-        } while (value > 7 || value < 1);
-        outp(0x70, 0x06);
-        outp(0x71, IntToBCD(value));				//6-отвечает за дни недели
-
-        do
-        {
-                printf("Enter day of month(1...31): ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 31 || value < 1)
-                        printf("Error incorrect value!\n");
-        } while (value > 31 || value < 1);
-        outp(0x70, 0x07);
-        outp(0x71, IntToBCD(value));				//7-дата
-
-        do
-        {
-                printf("Enter mounth(1...12): ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 21 || value < 1)
-                        printf("Error incorrect value!\n");
-        } while (value > 12 || value < 1);
-        outp(0x70, 0x08);
-        outp(0x71, IntToBCD(value));				//8-месяц
-
-        do
-        {
-                printf("Enter year(0...20): ");
-                fflush(stdin);
-                scanf("%d", &value);
-                if (value > 20 || value < 0)
-                        printf("Error incorrect value!\n");
-        } while (value > 20 || value < 0);
-        outp(0x70, 0x09);
-        outp(0x71, IntToBCD(value));				//9-год
-
-        unfreeze();
-}
-
 void enableAlarm(void)
 {
 
@@ -250,6 +116,140 @@ void freeze(void)
         value |= 0x80;						//запрещаем обновления часов,с помощи установки UPD 7-го бита на 1
         outp(0x70, 0x0B);
         outp(0x71, value);					//заносим новое значение в регистр с установленным битом запрета
+}
+
+void getTime(void)
+{
+        int value;
+        wait();							//ожидаем часы
+        outp(0x70, 0x04);					//устанавливаем значение порта
+        value = inp(0x71);					//получаем значение часов
+        printf("%d:", BCDToInteger(value));                     //переводим двоично-десятичный вид в в представление int
+
+        wait();
+        outp(0x70, 0x02);                                       //устанавливаем значение порта
+        value = inp(0x71);					//получаем значение минут
+        printf("%d:", BCDToInteger(value));
+
+        wait();
+        outp(0x70, 0x00);                                       //устанавливаем значение порта
+        value = inp(0x71);					//получаем значение секунды
+        printf("%d   ", BCDToInteger(value));
+
+        wait();
+        outp(0x70, 0x07);                                       //устанавливаем значение порта
+        value = inp(0x71);					//получаем значение даты
+        printf("%d.", BCDToInteger(value));
+
+        wait();
+        outp(0x70, 0x08);                                       //устанавливаем значение порта
+        value = inp(0x71);					//получаем значение месяца
+        printf("%d.", BCDToInteger(value));
+
+        wait();
+        outp(0x70, 0x09);                                       //устанавливаем значение порта
+        value = inp(0x71);                                       //получаем значение года
+        printf("%d   ", BCDToInteger(value));
+
+        wait();
+        outp(0x70, 0x06);                                       //устанавливаем значение порта
+        value = inp(0x71);					//получаем значение дня недели
+        switch (BCDToInteger(value))                            //Вывод дня недели
+        {
+        case 1: printf("Sunday\n"); break;
+        case 2: printf("Monday\n"); break;
+        case 3: printf("Tuesday\n"); break;
+        case 4: printf("Wednesday\n"); break;
+        case 5: printf("Thursday\n"); break;
+        case 6: printf("Friday\n"); break;
+        case 7: printf("Saturday\n"); break;
+        default: printf("Day of week is not set\n"); break;
+        }
+}
+
+void setTime(void)
+{
+        int value;
+        freeze();
+        //получение данных
+        do
+        {
+                printf("Enter hour: ");
+                fflush(stdin);                                  //очистка буфера ввода
+                scanf("%d", &value);
+                if (value > 23 || value < 0)
+                        printf("Error incorrect value!\n");
+        } while (value > 23 || value < 0);
+        outp(0x70, 0x04);
+        outp(0x71, IntToBCD(value));				//установка значений часов
+
+        do
+        {
+                printf("Enter minute: ");
+                fflush(stdin);                                  //очистка буфера ввода
+                scanf("%d", &value);
+                if (value > 59 || value < 0)
+                        printf("Error incorrect value!\n");
+        } while (value > 59 || value < 0);
+        outp(0x70, 0x02);
+        outp(0x71, IntToBCD(value));				//установка значений минут
+
+        do
+        {
+                printf("Enter second: ");
+                fflush(stdin);                                  //очистка буфера ввода
+                scanf("%d", &value);
+                if (value > 59 || value < 0)
+                        printf("Error incorrect value!\n");
+        } while (value > 59 || value < 0);
+        outp(0x70, 0x00);                                       //устанавливаем значение порта
+        outp(0x71, IntToBCD(value));				//установка значений секунд
+
+        do
+        {
+                printf("Enter week day number(1...7): ");
+                fflush(stdin);                                  //очистка буфера ввода
+                scanf("%d", &value);
+                if (value > 7 || value < 1)
+                        printf("Error incorrect value!\n");
+        } while (value > 7 || value < 1);
+        outp(0x70, 0x06);                                       //устанавливаем значение порта
+        outp(0x71, IntToBCD(value));				//6-отвечает за дни недели
+
+        do
+        {
+                printf("Enter day of month(1...31): ");
+                fflush(stdin);                                  //очистка буфера ввода
+                scanf("%d", &value);
+                if (value > 31 || value < 1)
+                        printf("Error incorrect value!\n");
+        } while (value > 31 || value < 1);
+        outp(0x70, 0x07);                       
+        outp(0x71, IntToBCD(value));				//7-дата
+
+        do
+        {
+                printf("Enter mounth(1...12): ");
+                fflush(stdin);
+                scanf("%d", &value);
+                if (value > 21 || value < 1)
+                        printf("Error incorrect value!\n");
+        } while (value > 12 || value < 1);
+        outp(0x70, 0x08);
+        outp(0x71, IntToBCD(value));				//8-месяц
+
+        do
+        {
+                printf("Enter year(0...20): ");
+                fflush(stdin);
+                scanf("%d", &value);
+                if (value > 20 || value < 0)
+                        printf("Error incorrect value!\n");
+        } while (value > 20 || value < 0);
+        outp(0x70, 0x09);
+        outp(0x71, IntToBCD(value));				//9-год
+
+        unfreeze();
 }
 
 void unfreeze(void)
