@@ -1,0 +1,69 @@
+#include <dos.h>
+#include <conio.h>
+#include <stdio.h>
+
+void interrupt(*oldInt9)(...);
+const char indicatorsMask = 0x7;
+int doResend = 1;
+int QPressed = 0;
+int blinkingPaused = 1;
+
+void interrupt newInt9(...)
+{
+    oldInt9();
+    unsigned char value = inp(0x60); //Получаем скан-код нажатой в текущий момент клавиши  (или код возврата)
+
+    if (value == 0x10) //Если нажата клавиша Q
+        QPressed = 1;
+
+    if (value == 0x26) //Если нажата клавиша L
+        blinkingPaused = !blinkingPaused;
+
+    doResend = !blinkingPaused && value != 0xFA; // (value != 0xFA) - если операция завершена c ошибкой и если моргание не на паузе
+
+    printf("%X\n", value);
+
+    outp(0x20, 0x20); //Сброс контроллера прерываний
+}
+
+void setMask(unsigned char mask) {
+        doResend = 1;
+        while (doResend) {				// Пока нет подтверждения успешного выполнения команды
+                while ((inp(0x64) & 0x02) != 0x00);	// Ожидаем освобождения входного буфера клавиатуры
+                outp(0x60, 0xED);			// Записываем в порт команду управления индикаторами, ED - код для управления индикаторами клавиатуры
+                delay(50);
+        }
+
+        doResend = 1;
+        while (doResend) {				//Если во время передачи произойдёт какая-либо ошибка, то необходимо повторить пересылку
+                while ((inp(0x64) & 0x02) != 0x00);	// Ожидаем освобождения входного буфера клавиатуры
+                outp(0x60, mask);			// Записываем в порт битовую маску для настройки индикаторов
+                delay(50);
+        }
+}
+
+void main()
+{
+    clrscr();
+    disable();
+    oldInt9 = getvect(0x9);						// Сохраняем указатель на старый обработчик
+    setvect(0x9, newInt9);						// Меняем его на новый
+    enable();
+    while (!QPressed)
+    {
+                if (!blinkingPaused)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                setMask(indicatorsMask);
+                delay(1000);
+                setMask(0);
+                delay(400);
+            }
+        }
+    }
+    disable();
+    setvect(0x9, oldInt9);						// Восстанавливаем старый обработчик прерывания
+    enable();
+
+}
