@@ -1,0 +1,88 @@
+#include <stdio.h>
+#include <dos.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define PORT 0x3F8
+#define int long
+
+void init() {
+ outp(PORT + 1, 0x00); //Disable all interrupts
+ outp(PORT + 3, 0x80); //Enable DLAB
+ outp(PORT + 0, 0x0C); //Set divisor to 7 (lo byte) 9600 baud
+ outp(PORT + 1, 0x00); //		  (hi byte)
+ outp(PORT + 3, 0x03); //8 bits, no parity, one stop bit
+ outp(PORT + 4, 0x0B); //Modem control register - IRQs enabled, RTS, DSR set
+}
+
+int isTransmitEmpty() {
+ return inp(PORT + 5) & 0x20; // Check if transmitter holding register is empty
+}
+
+void sendChar(char c) {
+ while (!isTransmitEmpty());
+
+ outp(PORT, c);		// Put char in data register (trasmit buffer)
+}
+
+int dataReady() {
+ return inp(PORT + 5) & 0x01; // Check if data ready
+}
+
+char receiveChar() {
+ while (!dataReady());
+
+ return inp(PORT);	// Read char from data register (transmit buffer)
+}
+
+char* receiveData() {
+ int bufferSize = 0;
+ char *b = (char*) &bufferSize;
+
+ b[0] = receiveChar();
+ b[1] = receiveChar();
+ b[2] = receiveChar();
+ b[3] = receiveChar();  // Read buffer size
+
+ char *buffer = (char*) malloc((bufferSize + 1) * sizeof(char));
+ buffer[bufferSize] = '\0';
+
+ for (int i = 0; i < bufferSize; ++i)
+  buffer[i] = receiveChar();		// Read buffer
+
+ return buffer;
+}
+
+void sendData(char *buffer, int bufferSize) {
+ char *b = (char*) &bufferSize;
+ sendChar(b[0]);
+ sendChar(b[1]);
+ sendChar(b[2]);
+ sendChar(b[3]);  // Send buffer size
+
+ for (int i = 0; i < bufferSize; ++i)
+  sendChar(buffer[i]);			//Send buffer
+}
+
+int main() {
+ init();
+
+ while (1) {
+  printf("\nWaiting for data...\n");
+
+  char *data = receiveData();
+  printf("Received:\n%s\n", data);
+  if (strcmp(data, "exit") == 0) break;
+
+  printf("\nEnter string:\n");
+  char buffer[1024];
+  gets(buffer);
+
+  sendData(buffer, strlen(buffer));
+  if (strcmp(buffer, "exit") == 0) break;
+ }
+
+ printf("Press ENTER to exit\n");
+ getchar();
+ return 0;
+}                                        

@@ -1,0 +1,122 @@
+#include <windows.h>
+#include <stdio.h>
+#include <string>
+#include <iostream>
+
+HANDLE hComm;
+
+void init() {
+	hComm = CreateFile("COM2",					//port name
+		GENERIC_READ | GENERIC_WRITE,			//Read/Write
+		0,										// No Sharing
+		NULL,									// No Security
+		OPEN_EXISTING,							// Open existing port only
+		0,										// Non Overlapped I/O
+		NULL);									// Null for Comm Devices
+
+	if (hComm == INVALID_HANDLE_VALUE) {
+		printf("Error in opening serial port\n");
+		exit(0);
+	}
+
+	DCB dcbSerialParams = { 0 };				// Initializing DCB structure
+	dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+
+	bool status = GetCommState(hComm, &dcbSerialParams);
+	if (!status) printf("GetCommState error\n");
+
+	dcbSerialParams.BaudRate = CBR_9600;		// BaudRate = 9600
+	dcbSerialParams.ByteSize = 8;				// ByteSize = 8
+	dcbSerialParams.StopBits = ONESTOPBIT;		// StopBits = 1
+	dcbSerialParams.Parity = NOPARITY;			// Parity = None
+
+	status = SetCommState(hComm, &dcbSerialParams);		// Setting DCB structure
+	if (!status) printf("SetCommState error\n");
+
+	status = SetCommMask(hComm, EV_RXCHAR);		// Monitoring receive char event
+	if (!status) printf("SetCommMask error\n");
+}
+
+void sendChar(const char* ch) {
+	DWORD dNoOFBytestoWrite = sizeof(char);		// Number of bytes to write into the port
+	DWORD dNoOfBytesWritten = 0;				// Number of bytes written to the port
+
+	bool status = WriteFile(hComm,				// Handle to the Serial port
+		ch,					// Data to be written to the port
+		dNoOFBytestoWrite,	//Number of bytes to write
+		&dNoOfBytesWritten,	//Bytes written
+		NULL);
+
+	if (!status) printf("Send char error\n");
+}
+
+void sendData(const char *buffer, int bufferSize) {
+	char *b = (char*)&bufferSize;
+
+	sendChar(b + 0);
+	sendChar(b + 1);
+	sendChar(b + 2);
+	sendChar(b + 3);					// Sending bufffer size
+
+	for (int i = 0; i < bufferSize; ++i)
+		sendChar(buffer + i);			// Sending buffer
+}
+
+void receiveChar(char* ch) {
+	DWORD dwEventMask;
+	bool status = WaitCommEvent(hComm, &dwEventMask, NULL);		// Waiting for data
+	if (!status) printf("Error waiting for event\n");
+
+	DWORD NoBytesRead;
+
+	status = ReadFile(hComm,			// Handle of the Serial port
+		ch,				// Char
+		sizeof(char),		// Size of char
+		&NoBytesRead,		// Number of bytes read
+		NULL);
+
+	if (!status) printf("Error receiving char\n");
+}
+
+char* receiveData() {
+	int bufferSize = 0;
+	char *b = (char*)&bufferSize;
+
+	receiveChar(b + 0);
+	receiveChar(b + 1);
+	receiveChar(b + 2);
+	receiveChar(b + 3);					// Read buffer size
+
+	char *buffer = (char*)malloc((bufferSize + 1) * sizeof(char));
+	buffer[bufferSize] = '\0';
+
+	for (int i = 0; i < bufferSize; ++i)
+		receiveChar(buffer + i);		// Reading buffer
+
+	return buffer;
+}
+
+int main() {
+	init();
+
+	std::string str;
+
+	while (true) {
+		printf("\nEnter string:\n");
+		std::getline(std::cin, str);
+
+		sendData(str.c_str(), str.size());
+		if (str == "exit") break;
+
+		printf("\nWaiting for data...\n");
+
+		char *data = receiveData();
+		printf("Received:\n%s\n", data);
+		if (strcmp(data, "exit") == 0) break;
+	}
+
+	system("pause");
+	CloseHandle(hComm);					// Closing the Serial Port
+
+	return 0;
+}
